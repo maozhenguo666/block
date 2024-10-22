@@ -1,4 +1,4 @@
-work_dir: ./output/ctrgcn_V1_JM_3D
+work_dir: ./output/blockgcn_V1_JM_3D
 
 # feeder
 feeder: dataset.feeder_xyz.Feeder
@@ -19,7 +19,7 @@ test_feeder_args:
   vel: True
 
 # model
-model: model.ctrgcn_xyz.Model
+model: model.blockgcn_xyz.Model
 model_args:
   num_class: 155
   num_point: 17

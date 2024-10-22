@@ -145,7 +145,7 @@ class CTRGC(nn.Module):
         super(CTRGC, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
-        if in_channels == 3 or in_channels == 9:
+        if in_channels == 2 or in_channels == 9:
             self.rel_channels = 8
             self.mid_channels = 16
         else:
@@ -260,7 +260,7 @@ class TCN_GCN_unit(nn.Module):
         return y
 
 class Model(nn.Module):
-    def __init__(self, num_class=60, num_point=25, num_person=2, graph=None, graph_args=dict(), in_channels=3,
+    def __init__(self, num_class=60, num_point=25, num_person=2, graph=None, graph_args=dict(), in_channels=2,
                  drop_out=0, adaptive=True):
         super(Model, self).__init__()
 

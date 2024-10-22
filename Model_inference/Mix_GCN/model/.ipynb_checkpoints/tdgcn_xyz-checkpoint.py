@@ -6,12 +6,15 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
+
+
 def import_class(name):
     components = name.split('.')
     mod = __import__(components[0])
     for comp in components[1:]:
         mod = getattr(mod, comp)
     return mod
+
 
 def conv_branch_init(conv, branches):
     weight = conv.weight
@@ -21,15 +24,18 @@ def conv_branch_init(conv, branches):
     nn.init.normal_(weight, 0, math.sqrt(2. / (n * k1 * k2 * branches)))
     nn.init.constant_(conv.bias, 0)
 
+
 def conv_init(conv):
     if conv.weight is not None:
         nn.init.kaiming_normal_(conv.weight, mode='fan_out')
     if conv.bias is not None:
         nn.init.constant_(conv.bias, 0)
 
+
 def bn_init(bn, scale):
     nn.init.constant_(bn.weight, scale)
     nn.init.constant_(bn.bias, 0)
+
 
 def weights_init(m):
     classname = m.__class__.__name__
@@ -43,6 +49,7 @@ def weights_init(m):
             m.weight.data.normal_(1.0, 0.02)
         if hasattr(m, 'bias') and m.bias is not None:
             m.bias.data.fill_(0)
+
 
 class TemporalConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, dilation=1):
@@ -62,6 +69,7 @@ class TemporalConv(nn.Module):
         x = self.conv(x)
         x = self.bn(x)
         return x
+
 
 class MultiScale_TemporalConv(nn.Module):
     def __init__(self,
@@ -109,7 +117,7 @@ class MultiScale_TemporalConv(nn.Module):
             nn.BatchNorm2d(branch_channels),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=(3,1), stride=(stride,1), padding=(1,0)),
-            nn.BatchNorm2d(branch_channels)  # 为什么还要加bn
+            nn.BatchNorm2d(branch_channels)  
         ))
 
         self.branches.append(nn.Sequential(
@@ -140,9 +148,10 @@ class MultiScale_TemporalConv(nn.Module):
         out += res
         return out
 
-class CTRGC(nn.Module):
-    def __init__(self, in_channels, out_channels, rel_reduction=8, mid_reduction=1):
-        super(CTRGC, self).__init__()
+
+class TDGC(nn.Module):
+    def __init__(self, in_channels, out_channels, rel_reduction=8, mid_reduction=1): # r = 4 r = 16
+        super(TDGC, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         if in_channels == 3 or in_channels == 9:
@@ -152,21 +161,28 @@ class CTRGC(nn.Module):
             self.rel_channels = in_channels // rel_reduction
             self.mid_channels = in_channels // mid_reduction
         self.conv1 = nn.Conv2d(self.in_channels, self.rel_channels, kernel_size=1)
-        self.conv2 = nn.Conv2d(self.in_channels, self.rel_channels, kernel_size=1)
         self.conv3 = nn.Conv2d(self.in_channels, self.out_channels, kernel_size=1)
         self.conv4 = nn.Conv2d(self.rel_channels, self.out_channels, kernel_size=1)
+
         self.tanh = nn.Tanh()
+
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 conv_init(m)
             elif isinstance(m, nn.BatchNorm2d):
                 bn_init(m, 1)
 
-    def forward(self, x, A=None, alpha=1):
-        x1, x2, x3 = self.conv1(x).mean(-2), self.conv2(x).mean(-2), self.conv3(x)
-        x1 = self.tanh(x1.unsqueeze(-1) - x2.unsqueeze(-2))
-        x1 = self.conv4(x1) * alpha + (A.unsqueeze(0).unsqueeze(0) if A is not None else 0)  # N,C,V,V
+    def forward(self, x, A=None, alpha=1, beta=1, gamma=0.1):
+
+        x1, x3 = self.conv1(x).mean(-2), self.conv3(x)
+        x1 = self.tanh(x1.unsqueeze(-1) - x1.unsqueeze(-2))
+        x1 = self.conv4(x1) * alpha + (A.unsqueeze(0).unsqueeze(0) if A is not None else 0)
         x1 = torch.einsum('ncuv,nctv->nctu', x1, x3)
+        x4 = self.tanh(x3.mean(-3).unsqueeze(-1) - x3.mean(-3).unsqueeze(-2))
+        x3 = x3.permute(0, 2, 1, 3)
+        x5 = torch.einsum('btmn,btcn->bctm', x4, x3)
+        x1 = x1 * beta  + x5 * gamma
+
         return x1
 
 class unit_tcn(nn.Module):
@@ -197,7 +213,7 @@ class unit_gcn(nn.Module):
         self.num_subset = A.shape[0]
         self.convs = nn.ModuleList()
         for i in range(self.num_subset):
-            self.convs.append(CTRGC(in_channels, out_channels))
+            self.convs.append(TDGC(in_channels, out_channels))
 
         if residual:
             if in_channels != out_channels:
@@ -213,10 +229,13 @@ class unit_gcn(nn.Module):
             self.PA = nn.Parameter(torch.from_numpy(A.astype(np.float32)))
         else:
             self.A = Variable(torch.from_numpy(A.astype(np.float32)), requires_grad=False)
-        self.alpha = nn.Parameter(torch.zeros(1))
+        self.alpha = nn.Parameter(torch.zeros(1)) # No I
         self.bn = nn.BatchNorm2d(out_channels)
         self.soft = nn.Softmax(-2)
         self.relu = nn.ReLU(inplace=True)
+
+        self.beta = nn.Parameter(torch.tensor(1.0)) # 1.0 1.4 2.0
+        self.gamma = nn.Parameter(torch.tensor(0.1))
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -232,12 +251,14 @@ class unit_gcn(nn.Module):
         else:
             A = self.A.cuda(x.get_device())
         for i in range(self.num_subset):
-            z = self.convs[i](x, A[i], self.alpha)
+            z = self.convs[i](x, A[i], self.alpha, self.beta, self.gamma)
             y = z + y if y is not None else z
         y = self.bn(y)
         y += self.down(x)
         y = self.relu(y)
+
         return y
+
 
 class TCN_GCN_unit(nn.Module):
     def __init__(self, in_channels, out_channels, A, stride=1, residual=True, adaptive=True, kernel_size=5, dilations=[1,2]):
@@ -259,6 +280,7 @@ class TCN_GCN_unit(nn.Module):
         y = self.relu(self.tcn1(self.gcn1(x)) + self.residual(x))
         return y
 
+
 class Model(nn.Module):
     def __init__(self, num_class=60, num_point=25, num_person=2, graph=None, graph_args=dict(), in_channels=3,
                  drop_out=0, adaptive=True):
@@ -270,7 +292,7 @@ class Model(nn.Module):
             Graph = import_class(graph)
             self.graph = Graph(**graph_args)
 
-        A = self.graph.A # 3,17,17
+        A = self.graph.A # 3,25,25
 
         self.num_class = num_class
         self.num_point = num_point
@@ -297,6 +319,9 @@ class Model(nn.Module):
             self.drop_out = lambda x: x
 
     def forward(self, x):
+        if len(x.shape) == 3:
+            N, T, VC = x.shape
+            x = x.view(N, T, self.num_point, -1).permute(0, 3, 1, 2).contiguous().unsqueeze(-1)
         N, C, T, V, M = x.size()
 
         x = x.permute(0, 4, 3, 1, 2).contiguous().view(N, M * V * C, T)
@@ -313,7 +338,6 @@ class Model(nn.Module):
         x = self.l9(x)
         x = self.l10(x)
 
-        # N*M,C,T,V
         c_new = x.size(1)
         x = x.view(N, M, c_new, -1)
         x = x.mean(3).mean(1)

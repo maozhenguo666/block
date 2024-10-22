@@ -427,6 +427,7 @@ class Processor():
             f_r = open(result_file, 'w')
         self.model.eval()
         self.print_log('Eval epoch: {}'.format(epoch + 1))
+        pred_array=[]
         for ln in loader_name:
             loss_value = []
             score_frag = []
@@ -446,6 +447,7 @@ class Processor():
 
                     _, predict_label = torch.max(output.data, 1)
                     pred_list.append(predict_label.data.cpu().numpy())
+                    pred_array.append(output.data.cpu().numpy())
                     step += 1
 
                 if wrong_file is not None or result_file is not None:
@@ -494,6 +496,7 @@ class Processor():
                 writer = csv.writer(f)
                 writer.writerow(each_acc)
                 writer.writerows(confusion)
+        np.save('/mnt/workspace/ICMEW2024-Track10/Model_inference/Mix_GCN/output/mstgcn_V1_J/pred.npy', np.concatenate(pred_array))
 
     def start(self):
         if self.arg.phase == 'train':
