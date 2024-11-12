@@ -8,8 +8,14 @@ import numpy as np
 # # 保存为 .npz 文件
 # np.savez('V1testformer.npz',  x_test=x_test, y_test=y_test)
 
-x_test = np.load('ntutestB.npy')
-y_test = np.load('ntutestB_one_hot.npy')
+# x_test = np.load('val_joint_former.npy')
+# y_test = np.load('G:/无人机/数据处理/基于无人机的人体行为识别-参赛资源(省赛)/dataguo/data/val_label.npy')
+#
+# # 保存为 .npz 文件
+# np.savez('val.npz',  x_test=x_test, y_test=y_test)
+
+x_test = np.load('test_joint_former.npy')
+y_test = np.load('int64.npy')
 
 # 保存为 .npz 文件
-np.savez('V1formertest.npz',  x_test=x_test, y_test=y_test)
+np.savez('test.npz',  x_test=x_test, y_test=y_test)

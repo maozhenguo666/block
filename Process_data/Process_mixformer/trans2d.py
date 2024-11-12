@@ -1,7 +1,7 @@
 import numpy as np
 
 # 加载数据
-data = np.load('test_joint_B.npy')
+data = np.load('G:/无人机/数据处理/基于无人机的人体行为识别-参赛资源(省赛)/dataguo/data/val_joint.npy')
 
 # 初始化新的数组，目标维度为 (N, T, M, V, C)
 N, C, T, V, M = data.shape
@@ -16,4 +16,4 @@ for n in range(N):
                 new_data[n, t, m, v, :] = data[n, :, t, v, m]
 
 # 保存新数据
-np.save('test_joint_B_former.npy', new_data)
+np.save('val_joint_former.npy', new_data)

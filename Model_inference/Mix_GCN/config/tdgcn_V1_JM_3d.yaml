@@ -3,7 +3,7 @@ work_dir: ./output/tdgcn_V1_JM_3D
 # feeder
 feeder: dataset.feeder_xyz.Feeder
 train_feeder_args: 
-  data_path: dataset/save_3d_pose/V1.npz
+  data_path: dataset/save_3d_pose/train.npz
   data_split: train
   p_interval: [0.5, 1]
   window_size: 64
@@ -11,7 +11,7 @@ train_feeder_args:
   vel: True
 
 test_feeder_args:
-  data_path: dataset/save_3d_pose/V1.npz
+  data_path: dataset/save_3d_pose/test.npz
   data_split: test
   p_interval: [0.95]
   window_size: 64

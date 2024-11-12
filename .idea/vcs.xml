@@ -2,5 +2,8 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/DeGCN_pytorch" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/DeGCN_pytorch/apex" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/MMCL-Action" vcs="Git" />
   </component>
 </project>

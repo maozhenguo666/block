@@ -19,8 +19,8 @@ train_feeder_args:
   bone: True
 
 test_feeder_args:
-  data_path: /mnt/workspace/STTFormer/gendata/test_A_joint.npy
-  label_path: /mnt/workspace/STTFormer/gendata/test_label_A.npy
+  data_path: /mnt/workspace/STTFormer/gendata/test_joint.npy
+  label_path: /mnt/workspace/STTFormer/gendata/test_label.npy
   split: test  
   debug: False
   window_size: 120
