@@ -1,0 +1,56 @@
+work_dir: ./work_dir/jbf_bm_3d
+
+# feeder
+feeder: feeders.feeder_ntu.Feeder
+train_feeder_args:
+  data_path: /mnt/workspace/block/DeGCN_pytorch/data1/train_bone_motion.npy
+  label_path: /mnt/workspace/block/DeGCN_pytorch/data1/train_label.npy
+  split: train
+  debug: False
+  random_choose: False
+  random_shift: True
+  random_move: False
+  window_size: 64
+  normalization: False
+  random_rot: True
+  p_interval: [0.5, 1]
+  vel: False
+  bone: False
+
+test_feeder_args:
+  data_path: /mnt/workspace/block/DeGCN_pytorch/data1/test_bone_motion.npy
+  label_path: /mnt/workspace/block/DeGCN_pytorch/data1/int64.npy
+  split: test
+  window_size: 64
+  p_interval: [0.95]
+  vel: False
+  bone: False
+  debug: False
+
+# model
+model: model.jbf.Model
+model_args:
+  num_class: 155
+  num_point: 17
+  num_person: 2
+  k: 8
+  eta: 4
+  num_stream: 2
+  graph: graph.uav.Graph
+  graph_args:
+    labeling_mode: 'spatial'
+
+#optim
+weight_decay: 0.0004
+base_lr: 0.1
+step: [35,60,75]
+warm_up_epoch: 5
+cosine_epoch: 60
+
+# training
+device: [0]
+batch_size: 64
+test_batch_size: 64
+num_epoch: 100
+nesterov: True
+
